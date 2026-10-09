@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Gaussian Capture</title>
+<meta name="description" content="Real-time Gaussian-splat volumetric capture from a 10-camera RGB-D rig: fused, rendered and recorded at 30 fps as SPZ splat sequences.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f7f4; --paper: #ffffff; --ink: #16191c; --ink-soft: #4a5258; --ink-faint: #858d93;
+  --line: #e1e3e0; --accent: #2f6fdb; --accent-soft: #e6eefc; --good: #1f8a5b; --bad: #c2453b;
+  --chip: #eef0ee; --code: #f1f2ef; --shadow: rgba(20,25,30,.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1215; --paper: #161a1e; --ink: #e8ebee; --ink-soft: #a9b2b9; --ink-faint: #737d85;
+    --line: #262c32; --accent: #7aa7ff; --accent-soft: #1a2638; --good: #4cc38a; --bad: #ff7a6e;
+    --chip: #1d2227; --code: #1b2025; --shadow: rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1215; --paper: #161a1e; --ink: #e8ebee; --ink-soft: #a9b2b9; --ink-faint: #737d85;
+  --line: #262c32; --accent: #7aa7ff; --accent-soft: #1a2638; --good: #4cc38a; --bad: #ff7a6e;
+  --chip: #1d2227; --code: #1b2025; --shadow: rgba(0,0,0,.4);
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.65 Inter, system-ui, sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+header.hero { padding: 64px 0 28px; text-align: center; }
+.eyebrow { font: 500 13px/1 "JetBrains Mono", monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.12; margin: 14px 0 10px; letter-spacing: -.02em; }
+.sub { color: var(--ink-soft); font-size: clamp(16px, 2.2vw, 19px); max-width: 720px; margin: 0 auto; }
+.authors { margin: 22px 0 4px; font-weight: 500; }
+.affil { color: var(--ink-faint); font-size: 14px; }
+.links { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 24px 0 8px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; background: var(--ink); color: var(--bg); font-weight: 600; font-size: 14px; }
+.btn:hover { text-decoration: none; opacity: .88; }
+.btn.off { background: var(--chip); color: var(--ink-faint); cursor: default; }
+.btn svg { width: 16px; height: 16px; }
+.tldr { margin: 28px auto 0; max-width: 760px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); font-size: 15px; }
+.tldr b { color: var(--accent); }
+section { padding: 44px 0 8px; }
+h2 { font-size: 26px; letter-spacing: -.01em; margin: 0 0 14px; }
+h3 { font-size: 18px; margin: 26px 0 8px; }
+p { margin: 0 0 14px; color: var(--ink); }
+.muted { color: var(--ink-soft); }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 1px 2px var(--shadow); }
+.media { aspect-ratio: 16 / 9; display: grid; place-items: center; text-align: center; color: var(--ink-faint); font-size: 14px; padding: 16px; overflow: hidden; }
+.media video, .media img { width: 100%; height: 100%; object-fit: contain; display: block; }
+figcaption { color: var(--ink-faint); font-size: 14px; margin-top: 8px; text-align: center; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+@media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.stat { padding: 16px; }
+.stat .v { font-size: 28px; font-weight: 700; letter-spacing: -.02em; }
+.stat .k { color: var(--ink-soft); font-size: 14px; }
+.pipe { padding: 18px; overflow-x: auto; }
+.pipe svg { width: 100%; min-width: 640px; height: auto; display: block; }
+.pipe text { font-family: Inter, sans-serif; fill: var(--ink); }
+.pipe .box { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; }
+.pipe .out { fill: var(--chip); stroke: var(--line); }
+.pipe .arrow { stroke: var(--ink-faint); stroke-width: 1.5; fill: none; marker-end: url(#ah); }
+.pipe .small { font-size: 11px; fill: var(--ink-soft); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--ink-soft); font-size: 13px; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl { overflow-x: auto; padding: 4px 8px; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.tag.good { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.tag.bad { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+ul { margin: 0 0 14px; padding-left: 20px; }
+li { margin: 4px 0; }
+pre { background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-x: auto; font: 13px/1.5 "JetBrains Mono", monospace; color: var(--ink); }
+footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-align: center; }
+.theme { position: fixed; top: 14px; right: 14px; background: var(--paper); border: 1px solid var(--line); color: var(--ink-soft); border-radius: 999px; padding: 6px 12px; font: 500 13px Inter, sans-serif; cursor: pointer; }
+</style>
+</head>
+<body>
+<button class="theme" id="theme" aria-label="Toggle dark mode">Theme</button>
+
+<header class="hero wrap">
+  <div class="eyebrow">Volumetric video · Gaussian splatting · Real time</div>
+  <h1>Live Gaussian-Splat Volumetric Capture<br>from a 10-Camera RGB-D Rig</h1>
+  <p class="sub">Performers fused, rendered and recorded as Gaussian splats at 30 fps, with no per-scene training, and exported as compact splat sequences.</p>
+  <div class="authors">Abdul Rehman</div>
+  <div class="affil">French Touch Factory · ITHACA</div>
+  <div class="links">
+    <span class="btn off" title="Coming soon">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h9l5 5v15H6zM14 3v5h5"/></svg>Paper (soon)</span>
+    <a class="btn" href="#video">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Video</a>
+    <span class="btn off" title="Code not public yet">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>Code (private)</span>
+  </div>
+  <div class="tldr"><b>TL;DR</b> Depth-sensor fusion → surface-aligned Gaussians with full-resolution colour → 30 fps live render and 30 fps SPZ sequence recording (.gseq) that plays back in Unity.</div>
+</header>
+
+<main class="wrap">
+
+<section id="video">
+  <figure class="card media" style="margin:0">
+    <!-- Replace with a cleared capture:  <video src="assets/teaser.mp4" autoplay muted loop playsinline></video> -->
+    <div>Teaser video goes here<br><span style="font-family:'JetBrains Mono',monospace">assets/teaser.mp4</span></div>
+  </figure>
+  <figcaption>Live capture: 10 RGB-D cameras fused into Gaussian splats and rendered in Unity at the input's 30 fps.</figcaption>
+</section>
+
+<section>
+  <h2>Abstract</h2>
+  <p>Most Gaussian-splatting pipelines optimise each scene or each frame offline, which takes minutes to hours. We instead build Gaussians <em>directly</em> from a calibrated multi-camera RGB-D rig, frame by frame, in real time. Depth from ten sensors is fused into a persistent, confidence-weighted surface model. Each surface element becomes a Gaussian aligned to the local surface normal, with its true projected size and colour gathered from the full-resolution colour images of all cameras, including a per-splat colour slope. The live result renders in Unity at 30 fps and records to a compact sequence of standard SPZ frames that plays back next to optimised 3DGS environments.</p>
+  <p class="muted">This is real-time <em>Gaussian-splat volumetric capture</em>: fusion drawn as Gaussians, not optimised 3DGS. Quality versus offline 3DGS / 4DGS on held-out cameras is still to be measured.</p>
+</section>
+
+<section>
+  <h2>Pipeline</h2>
+  <div class="card pipe">
+    <svg viewBox="0 0 900 250" role="img" aria-label="Pipeline diagram">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor" style="color:var(--ink-faint)"/></marker></defs>
+      <rect class="box" x="10" y="85" width="150" height="80" rx="10"/>
+      <text x="85" y="118" text-anchor="middle" font-weight="600" font-size="14">10× RGB-D</text>
+      <text x="85" y="138" text-anchor="middle" class="small">MKV / live, calibrated</text>
+      <rect class="box" x="200" y="85" width="160" height="80" rx="10"/>
+      <text x="280" y="114" text-anchor="middle" font-weight="600" font-size="14">GPU input</text>
+      <text x="280" y="134" text-anchor="middle" class="small">depth → points, flying-</text>
+      <text x="280" y="148" text-anchor="middle" class="small">pixel &amp; outlier rejection</text>
+      <rect class="box" x="400" y="85" width="170" height="80" rx="10"/>
+      <text x="485" y="114" text-anchor="middle" font-weight="600" font-size="14">Fusion</text>
+      <text x="485" y="134" text-anchor="middle" class="small">confidence-weighted surface,</text>
+      <text x="485" y="148" text-anchor="middle" class="small">carving, 0.3–0.55 ms CPU</text>
+      <rect class="box" x="610" y="85" width="170" height="80" rx="10"/>
+      <text x="695" y="114" text-anchor="middle" font-weight="600" font-size="14">Gaussians</text>
+      <text x="695" y="134" text-anchor="middle" class="small">normal-aligned, true size,</text>
+      <text x="695" y="148" text-anchor="middle" class="small">best-view colour + slope</text>
+      <path class="arrow" d="M160 125H196"/><path class="arrow" d="M360 125H396"/><path class="arrow" d="M570 125H606"/>
+      <rect class="out" x="800" y="55" width="92" height="60" rx="10"/>
+      <text x="846" y="81" text-anchor="middle" font-weight="600" font-size="13">Live render</text>
+      <text x="846" y="98" text-anchor="middle" class="small">Unity, 30 fps</text>
+      <rect class="out" x="800" y="135" width="92" height="60" rx="10"/>
+      <text x="846" y="161" text-anchor="middle" font-weight="600" font-size="13">.gseq</text>
+      <text x="846" y="178" text-anchor="middle" class="small">SPZ frames</text>
+      <path class="arrow" d="M780 118C790 100 790 90 796 86"/><path class="arrow" d="M780 132C790 150 790 160 796 164"/>
+    </svg>
+  </div>
+</section>
+
+<section>
+  <h2>Key numbers</h2>
+  <div class="stats">
+    <div class="card stat"><div class="v">30 fps</div><div class="k">live fusion + render, matching the camera rate</div></div>
+    <div class="card stat"><div class="v">0.3–0.55 ms</div><div class="k">CPU per fused frame (after removing blocking GPU readbacks)</div></div>
+    <div class="card stat"><div class="v">0.34 → 0.50</div><div class="k">sharpness against the camera photo (blur width + colour slopes)</div></div>
+    <div class="card stat"><div class="v">63 / 63</div><div class="k">source frames recorded to .gseq, none skipped</div></div>
+    <div class="card stat"><div class="v">10.5 → 7.4</div><div class="k">head-on colour error with best-view colour</div></div>
+    <div class="card stat"><div class="v">~6× smaller</div><div class="k">splats drawn at true size (an 8-pixel minimum was removed)</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>What made the difference</h2>
+  <p class="muted">Each change was measured live against the camera photos; changes that did not help were removed.</p>
+  <div class="card tbl">
+    <table>
+      <thead><tr><th>Change</th><th>Effect</th><th></th></tr></thead>
+      <tbody>
+        <tr><td>True-size splats (removed an 8-pixel minimum)</td><td>Every splat had been drawn ~6× too big; largest sharpness gain</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Single gamma encoding</td><td>Removed the washed-out look from double gamma</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Splats aligned to the surface normal</td><td>Fixed vertical streaks (median orientation error was 48°)</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Scale cap + edge-only birth rule</td><td>No floating blobs in motion, no fringe outside silhouettes</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Full-resolution colour from all cameras every frame</td><td>About twice the colour detail, no flicker</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Best-view colour</td><td>Head-on colour error 10.5 → 7.4</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Blur width 0.7 + per-splat colour slope</td><td>Sharpness vs camera photo 0.34 → 0.50</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Per-frame camera self-calibration</td><td>Corrections drifted up to 23 mm; quality dropped</td><td><span class="tag bad">removed</span></td></tr>
+        <tr><td>Gradient optimiser in the loop</td><td>No quality gain; fusion fell to 15–19 fps</td><td><span class="tag bad">removed</span></td></tr>
+        <tr><td>Evidence existence, opaque discs, surface snap, boundary shrink</td><td>Gaussian-count explosions, holes or artefacts</td><td><span class="tag bad">removed</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Recording and playback</h2>
+  <ul>
+    <li>One <code>.gseq</code> file per take: a small header and index, then one standard <a href="https://github.com/nianticlabs/spz">SPZ</a> frame per capture frame.</li>
+    <li>Paced recording, so no source frame is skipped (63 / 63).</li>
+    <li>Y-up export; plays in Unity next to optimised 3DGS environments.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Limitations</h2>
+  <ul>
+    <li>Not optimised 3DGS: detail is limited by depth-sensor quality and fusion resolution; hair, hands, dark or shiny clothes and fast motion are the hardest cases.</li>
+    <li>Areas no camera sees (behind a held instrument, between the legs) have no splats.</li>
+    <li>Several thresholds are tuned for this rig and need re-tuning for other rigs or sensors.</li>
+    <li>No held-out-camera evaluation (PSNR / SSIM / LPIPS) against offline methods yet.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Next</h2>
+  <ul>
+    <li><b>Held-out-camera evaluation</b> of the live result as the baseline.</li>
+    <li><b>Learned refiner:</b> a small network that corrects each fused Gaussian (position, scale, opacity, colour), trained by rendering into hidden cameras and comparing with their photos, then run live in Unity.</li>
+    <li>Orbbec sensors as the Azure Kinect replacement.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>BibTeX</h2>
+<pre>@misc{rehman2026livegaussiancapture,
+  title  = {Live Gaussian-Splat Volumetric Capture from a 10-Camera RGB-D Rig},
+  author = {Rehman, Abdul},
+  year   = {2026},
+  note   = {French Touch Factory / ITHACA, project page}
+}</pre>
+</section>
+
+</main>
+
+<footer class="wrap">
+  © 2026 French Touch Factory · ITHACA. Page layout in the style of academic project pages.
+</footer>
+
+<script>
+(function () {
+  var root = document.documentElement, btn = document.getElementById('theme');
+  try { var s = localStorage.getItem('theme'); if (s) root.setAttribute('data-theme', s); } catch (e) {}
+  btn.addEventListener('click', function () {
+    var dark = root.getAttribute('data-theme') === 'dark' ||
+      (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+    var next = dark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  });
+})();
+</script>
+</body>
+</html>
