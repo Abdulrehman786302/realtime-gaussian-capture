@@ -122,11 +122,11 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
     </div>
     <div class="v3d-bar">
       <span class="muted" id="gs-status">Drag to orbit · scroll or pinch to zoom</span>
-      <button type="button" class="v3d-btn" id="gs-play">Play 1 s (72 MB)</button>
+      <button type="button" class="v3d-btn" id="gs-play">Play 1 s (52 MB)</button>
       <button type="button" class="v3d-btn" id="gs-reset">Reset view</button>
     </div>
   </div>
-  <figcaption>A recorded take, exactly as the live pipeline wrote it: one SPZ frame per capture frame, ~195,000 Gaussians each, rendered in your browser with <a href="https://sparkjs.dev">Spark</a>. Play streams the first second (30 frames).</figcaption>
+  <figcaption>The latest recorded take (9 Oct), exactly as the pipeline wrote it: one SPZ frame per capture frame, ~140,000 Gaussians each, with visibility carving and temporal opacity on, rendered in your browser with <a href="https://sparkjs.dev">Spark</a>. Play streams one second (30 consecutive frames).</figcaption>
 </section>
 
 <section>
@@ -170,12 +170,12 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
 <section>
   <h2>Key numbers</h2>
   <div class="stats">
-    <div class="card stat"><div class="v">30 fps</div><div class="k">live fusion + render, matching the camera rate</div></div>
-    <div class="card stat"><div class="v">0.3–0.55 ms</div><div class="k">CPU per fused frame (after removing blocking GPU readbacks)</div></div>
-    <div class="card stat"><div class="v">0.34 → 0.50</div><div class="k">sharpness against the camera photo (blur width + colour slopes)</div></div>
-    <div class="card stat"><div class="v">63 / 63</div><div class="k">source frames recorded to .gseq, none skipped</div></div>
-    <div class="card stat"><div class="v">10.5 → 7.4</div><div class="k">head-on colour error with best-view colour</div></div>
-    <div class="card stat"><div class="v">~6× smaller</div><div class="k">splats drawn at true size (an 8-pixel minimum was removed)</div></div>
+    <div class="card stat"><div class="v">30 fps</div><div class="k">live fusion, ~200,000 Gaussians, Unity rendering at 80&ndash;85 fps</div></div>
+    <div class="card stat"><div class="v">0.57&ndash;0.63</div><div class="k">sharpness against the camera photo (from 0.34 before true-size splats and colour slopes)</div></div>
+    <div class="card stat"><div class="v">7.5 / 255</div><div class="k">colour error against cameras facing the surface (16.5 over all cameras)</div></div>
+    <div class="card stat"><div class="v">6.0 mm</div><div class="k">depth error of the Gaussians against the cameras' depth</div></div>
+    <div class="card stat"><div class="v">68&ndash;70 %</div><div class="k">of each frame's samples match an existing Gaussian (the rest are new)</div></div>
+    <div class="card stat"><div class="v">1.7 MB</div><div class="k">per recorded SPZ frame, ~140,000 Gaussians</div></div>
   </div>
 </section>
 
@@ -193,9 +193,14 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
         <tr><td>Full-resolution colour from all cameras every frame</td><td>About twice the colour detail, no flicker</td><td><span class="tag good">kept</span></td></tr>
         <tr><td>Best-view colour</td><td>Head-on colour error 10.5 → 7.4</td><td><span class="tag good">kept</span></td></tr>
         <tr><td>Blur width 0.7 + per-splat colour slope</td><td>Sharpness vs camera photo 0.34 → 0.50</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Visibility carving: every camera, every frame, removes Gaussians it looks through or sees background at</td><td>Gaussians left behind by fast motion vanish at once instead of trailing; thin parts seen by few cameras (hair, guitar head) no longer break up as they did with short fade timers. 1,000&ndash;1,500 removed per frame, ~0.1 ms CPU</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Carving's silhouette band wider than the depth filter's edge erosion (5 px, not 1.5 px)</td><td>The first version took the 3-pixel band the edge filter erases as background and removed ~40,000 real Gaussians per frame (matched fell to ~50 %); now under 20 per frame, matched back to ~70 %</td><td><span class="tag good">kept</span></td></tr>
         <tr><td>Per-frame camera self-calibration</td><td>Corrections drifted up to 23 mm; quality dropped</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Gradient optimiser in the loop</td><td>No quality gain; fusion fell to 15–19 fps</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Evidence existence, opaque discs, surface snap, boundary shrink</td><td>Gaussian-count explosions, holes or artefacts</td><td><span class="tag bad">removed</span></td></tr>
+        <tr><td>Isolated-Gaussian removal (too few neighbours within ~1 cm)</td><td>Only 30&ndash;70 removed per frame: the floaters come in small clusters, not alone</td><td><span class="tag bad">removed</span></td></tr>
+        <tr><td>Colour-guided depth smoothing before fusion</td><td>No visible gain; depth error against the cameras rose by ~0.2 mm</td><td><span class="tag bad">removed</span></td></tr>
+        <tr><td>Noise-aware motion (velocity smoothing, mm thresholds)</td><td>Superseded by visibility carving</td><td><span class="tag bad">removed</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -204,9 +209,12 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
 <section>
   <h2>Recording and playback</h2>
   <ul>
-    <li>One <code>.gseq</code> file per take: a small header and index, then one standard <a href="https://github.com/nianticlabs/spz">SPZ</a> frame per capture frame.</li>
-    <li>Paced recording, so no source frame is skipped (63 / 63).</li>
-    <li>Y-up export; plays in Unity next to optimised 3DGS environments.</li>
+    <li>One <code>.gseq</code> file per take: a small header and index, then one standard <a href="https://github.com/nianticlabs/spz">SPZ</a> frame per capture frame. The latest take: 62 frames, 102 MB, ~140,000 Gaussians and 1.7 MB per frame.</li>
+    <li>Paced recording: the MKV source is stepped one frame at a time and each frame is fused and written before the next is read, so the file plays at the source's 30 fps however slow writing is. In the latest take one camera skipped a frame; the recorder waited 2 s, logged it as missing and moved on (61 consecutive frames after it).</li>
+    <li>Only Gaussians seen in the current or previous frame are written (~140,000 of the ~200,000 the live view keeps), so a Gaussian left behind by motion is not recorded at full opacity.</li>
+    <li>Optional temporal opacity: Gaussians fade in at birth and out before death instead of popping; about 22 % are born and 22 % die per frame.</li>
+    <li>Optional <code>.g4d</code>: one record per continuous stretch of each Gaussian's life instead of one per frame &mdash; 55 MB, 54 % of the <code>.gseq</code>, average stretch 3 frames.</li>
+    <li>Y-up export; plays in Unity next to optimised 3DGS environments, and in the browser viewer above.</li>
   </ul>
 </section>
 
@@ -217,15 +225,6 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
     <li>Areas no camera sees (behind a held instrument, between the legs) have no splats.</li>
     <li>Several thresholds are tuned for this rig and need re-tuning for other rigs or sensors.</li>
     <li>No held-out-camera evaluation (PSNR / SSIM / LPIPS) against offline methods yet.</li>
-  </ul>
-</section>
-
-<section>
-  <h2>Next</h2>
-  <ul>
-    <li><b>Held-out-camera evaluation</b> of the live result as the baseline.</li>
-    <li><b>Learned refiner:</b> a small network that corrects each fused Gaussian (position, scale, opacity, colour), trained by rendering into hidden cameras and comparing with their photos, then run live in Unity.</li>
-    <li>Orbbec sensors as the Azure Kinect replacement.</li>
   </ul>
 </section>
 
@@ -263,9 +262,8 @@ const view = document.getElementById('gs-view'), canvas = document.getElementByI
 const status = document.getElementById('gs-status'), info = document.getElementById('gs-info');
 const playBtn = document.getElementById('gs-play');
 const BASE = 'assets/gs/';
-// the recording is in the rig's raw world (metres, Y down): half a turn about X and a lift of 2 x the rig's flip
-// axis (1.194 m) put the feet at y = 0, head up, facing +z
-const ORIENT = new THREE.Quaternion(1, 0, 0, 0), LIFT = 2 * 1.194;
+// the recording is Y-up in metres, the performer facing -z: half a turn about Y turns her towards the camera
+const ORIENT = new THREE.Quaternion(0, 1, 0, 0), LIFT = 0;
 const home = { pos: new THREE.Vector3(0, 1.1, 3.2), target: new THREE.Vector3(0, 0.95, 0) };
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
