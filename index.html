@@ -80,6 +80,15 @@ ul { margin: 0 0 14px; padding-left: 20px; }
 li { margin: 4px 0; }
 pre { background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-x: auto; font: 13px/1.5 "JetBrains Mono", monospace; color: var(--ink); }
 footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-align: center; }
+.gs-card { padding: 10px; }
+.gs-view { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: var(--code); border: 1px solid var(--line); cursor: grab; touch-action: none; }
+.gs-view:active { cursor: grabbing; }
+.gs-view canvas { width: 100%; height: 100%; display: block; }
+.gs-info { position: absolute; left: 10px; bottom: 8px; font: 500 12px "JetBrains Mono", monospace; color: var(--ink-faint); pointer-events: none; }
+.v3d-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; }
+.v3d-bar .muted { flex: 1 1 220px; }
+.v3d-btn { background: var(--paper); border: 1px solid var(--line); color: var(--ink); border-radius: 999px; padding: 5px 12px; font: 500 13px Inter, sans-serif; cursor: pointer; }
+.v3d-btn:disabled { color: var(--ink-faint); cursor: default; }
 .theme { position: fixed; top: 14px; right: 14px; background: var(--paper); border: 1px solid var(--line); color: var(--ink-soft); border-radius: 999px; padding: 6px 12px; font: 500 13px Inter, sans-serif; cursor: pointer; }
 </style>
 </head>
@@ -95,8 +104,8 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
   <div class="links">
     <span class="btn off" title="Coming soon">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h9l5 5v15H6zM14 3v5h5"/></svg>Paper (soon)</span>
-    <a class="btn" href="#video">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>Video</a>
+    <a class="btn" href="#viewer">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 3 7v10l9 5 9-5V7zm0 2.3L18.7 8 12 11.7 5.3 8zM5 9.7l6 3.3v6.6l-6-3.3zm8 9.9V13l6-3.3v6.6z"/></svg>3D viewer</a>
     <span class="btn off" title="Code not public yet">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.2 1.2a11 11 0 0 1 5.8 0c2.2-1.5 3.2-1.2 3.2-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 12 .5z"/></svg>Code (private)</span>
   </div>
@@ -105,12 +114,19 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
 
 <main class="wrap">
 
-<section id="video">
-  <figure class="card media" style="margin:0">
-    <!-- Replace with a cleared capture:  <video src="assets/teaser.mp4" autoplay muted loop playsinline></video> -->
-    <div>Teaser video goes here<br><span style="font-family:'JetBrains Mono',monospace">assets/teaser.mp4</span></div>
-  </figure>
-  <figcaption>Live capture: 10 RGB-D cameras fused into Gaussian splats and rendered in Unity at the input's 30 fps.</figcaption>
+<section id="viewer">
+  <div class="card gs-card">
+    <div class="gs-view" id="gs-view">
+      <canvas id="gs-canvas" aria-label="Interactive 3D Gaussian-splat capture"></canvas>
+      <div class="gs-info" id="gs-info"></div>
+    </div>
+    <div class="v3d-bar">
+      <span class="muted" id="gs-status">Drag to orbit · scroll or pinch to zoom</span>
+      <button type="button" class="v3d-btn" id="gs-play">Play 1 s (72 MB)</button>
+      <button type="button" class="v3d-btn" id="gs-reset">Reset view</button>
+    </div>
+  </div>
+  <figcaption>A recorded take, exactly as the live pipeline wrote it: one SPZ frame per capture frame, ~195,000 Gaussians each, rendered in your browser with <a href="https://sparkjs.dev">Spark</a>. Play streams the first second (30 frames).</figcaption>
 </section>
 
 <section>
@@ -229,6 +245,100 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
   © 2026 French Touch Factory · ITHACA. Page layout in the style of academic project pages.
 </footer>
 
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+  "@sparkjsdev/spark": "https://cdn.jsdelivr.net/npm/@sparkjsdev/spark@2.2.0/dist/spark.module.js"
+} }
+</script>
+<script type="module">
+// Gaussian viewer: frame 0 loads when the viewer is near the screen; Play streams 30 frames (one SplatMesh each,
+// only the current one visible) and loops them at the recording's 30 fps.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+
+const view = document.getElementById('gs-view'), canvas = document.getElementById('gs-canvas');
+const status = document.getElementById('gs-status'), info = document.getElementById('gs-info');
+const playBtn = document.getElementById('gs-play');
+const BASE = 'assets/gs/';
+// the recording is in the rig's raw world (metres, Y down): half a turn about X and a lift of 2 x the rig's flip
+// axis (1.194 m) put the feet at y = 0, head up, facing +z
+const ORIENT = new THREE.Quaternion(1, 0, 0, 0), LIFT = 2 * 1.194;
+const home = { pos: new THREE.Vector3(0, 1.1, 3.2), target: new THREE.Vector3(0, 0.95, 0) };
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: true });
+const scene = new THREE.Scene();
+scene.add(new SparkRenderer({ renderer }));
+const camera = new THREE.PerspectiveCamera(35, 4 / 3, 0.05, 100);
+const controls = new OrbitControls(camera, view);
+controls.enableDamping = true; controls.enablePan = false; controls.minDistance = 0.5; controls.maxDistance = 10;
+function resetView() { camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); }
+resetView();
+
+let meta = null, frames = [], current = 0, playing = false, lastTick = 0;
+function show(i) {
+  frames.forEach((m, k) => { if (m) m.visible = k === i; });
+  current = i;
+  if (meta) info.textContent = `frame ${i + 1} / ${meta.frames.length} · ${meta.frames[i].gaussians.toLocaleString()} Gaussians`;
+}
+function addFrame(i) {
+  const m = new SplatMesh({ url: BASE + meta.frames[i].file });
+  m.quaternion.copy(ORIENT);
+  m.position.y = LIFT;
+  m.visible = false;
+  scene.add(m);
+  frames[i] = m;
+  return m.initialized;
+}
+
+async function loadFirst() {
+  meta = await (await fetch(BASE + 'frames.json')).json();
+  status.textContent = 'Loading frame 1…';
+  await addFrame(0);
+  show(0);
+  status.textContent = 'Drag to orbit · scroll or pinch to zoom';
+}
+
+async function loadAll() {
+  playBtn.disabled = true;
+  let done = 1;
+  const n = meta.frames.length;
+  const jobs = [];
+  for (let i = 1; i < n; i++) jobs.push(addFrame(i).then(() => { done++; status.textContent = `Loading frames… ${done} / ${n}`; }));
+  await Promise.all(jobs);
+  status.textContent = 'Drag to orbit · scroll or pinch to zoom';
+  playBtn.disabled = false;
+}
+
+playBtn.addEventListener('click', async () => {
+  if (!meta) return;
+  if (frames.length < meta.frames.length || frames.some(f => !f)) await loadAll();
+  playing = !playing;
+  playBtn.textContent = playing ? 'Pause' : 'Play';
+});
+document.getElementById('gs-reset').addEventListener('click', resetView);
+
+function resize() {
+  const w = view.clientWidth, h = view.clientHeight;
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(view);
+resize();
+
+renderer.setAnimationLoop(t => {
+  controls.update();
+  if (playing && meta && t - lastTick >= 1000 / meta.fps) { lastTick = t; show((current + 1) % meta.frames.length); }
+  renderer.render(scene, camera);
+});
+
+new IntersectionObserver((entries, obs) => {
+  if (entries.some(en => en.isIntersecting)) { obs.disconnect(); loadFirst().catch(e => { status.textContent = 'Could not load the capture: ' + e.message; }); }
+}, { rootMargin: '300px' }).observe(view);
+</script>
 <script>
 (function () {
   var root = document.documentElement, btn = document.getElementById('theme');
