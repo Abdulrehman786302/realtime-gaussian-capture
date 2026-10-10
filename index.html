@@ -122,11 +122,11 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
     </div>
     <div class="v3d-bar">
       <span class="muted" id="gs-status">Drag to orbit · scroll or pinch to zoom</span>
-      <button type="button" class="v3d-btn" id="gs-play">Play 1 s (52 MB)</button>
+      <button type="button" class="v3d-btn" id="gs-play">Play 4 s (225 MB, streams)</button>
       <button type="button" class="v3d-btn" id="gs-reset">Reset view</button>
     </div>
   </div>
-  <figcaption>The latest recorded take (9 Oct), exactly as the pipeline wrote it: one SPZ frame per capture frame, ~140,000 Gaussians each, with visibility carving and temporal opacity on, rendered in your browser with <a href="https://sparkjs.dev">Spark</a>. Play streams one second (30 consecutive frames).</figcaption>
+  <figcaption>The latest recorded take (10 Oct, 4.1 s, 123 frames), exactly as the pipeline wrote it: one SPZ frame per capture frame, ~157,000 Gaussians each, with visibility carving and the hole fixes for the inside of the legs on, rendered in your browser with <a href="https://sparkjs.dev">Spark</a>. Play starts at once and loops over the frames loaded so far while the rest stream in.</figcaption>
 </section>
 
 <section>
@@ -275,7 +275,7 @@ controls.enableDamping = true; controls.enablePan = false; controls.minDistance 
 function resetView() { camera.position.copy(home.pos); controls.target.copy(home.target); controls.update(); }
 resetView();
 
-let meta = null, frames = [], current = 0, playing = false, lastTick = 0;
+let meta = null, frames = [], ready = [], playable = 0, current = 0, playing = false, lastTick = 0, streaming = false;
 function show(i) {
   frames.forEach((m, k) => { if (m) m.visible = k === i; });
   current = i;
@@ -288,7 +288,10 @@ function addFrame(i) {
   m.visible = false;
   scene.add(m);
   frames[i] = m;
-  return m.initialized;
+  return m.initialized.then(() => {
+    ready[i] = true;
+    while (ready[playable]) playable++;   // frames 0..playable-1 are all loaded: playback loops over them
+  });
 }
 
 async function loadFirst() {
@@ -299,20 +302,24 @@ async function loadFirst() {
   status.textContent = 'Drag to orbit · scroll or pinch to zoom';
 }
 
-async function loadAll() {
-  playBtn.disabled = true;
-  let done = 1;
+// streams the rest of the take in order, 4 frames at a time; playback starts at once and loops over what is loaded
+async function streamAll() {
+  streaming = true;
   const n = meta.frames.length;
-  const jobs = [];
-  for (let i = 1; i < n; i++) jobs.push(addFrame(i).then(() => { done++; status.textContent = `Loading frames… ${done} / ${n}`; }));
-  await Promise.all(jobs);
-  status.textContent = 'Drag to orbit · scroll or pinch to zoom';
-  playBtn.disabled = false;
+  let next = 1;
+  const worker = async () => {
+    while (next < n) {
+      const i = next++;
+      try { await addFrame(i); } catch (e) { /* a missing frame just ends the loop there */ }
+      status.textContent = playable < n ? `Streaming frames… ${playable} / ${n} ready` : 'Drag to orbit · scroll or pinch to zoom';
+    }
+  };
+  await Promise.all([worker(), worker(), worker(), worker()]);
 }
 
-playBtn.addEventListener('click', async () => {
+playBtn.addEventListener('click', () => {
   if (!meta) return;
-  if (frames.length < meta.frames.length || frames.some(f => !f)) await loadAll();
+  if (!streaming) streamAll();
   playing = !playing;
   playBtn.textContent = playing ? 'Pause' : 'Play';
 });
@@ -329,7 +336,7 @@ resize();
 
 renderer.setAnimationLoop(t => {
   controls.update();
-  if (playing && meta && t - lastTick >= 1000 / meta.fps) { lastTick = t; show((current + 1) % meta.frames.length); }
+  if (playing && meta && t - lastTick >= 1000 / meta.fps) { lastTick = t; show(current + 1 < playable ? current + 1 : 0); }
   renderer.render(scene, camera);
 });
 
