@@ -165,7 +165,7 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
       <rect class="box" x="400" y="85" width="170" height="80" rx="10"/>
       <text x="485" y="114" text-anchor="middle" font-weight="600" font-size="14">Fusion</text>
       <text x="485" y="134" text-anchor="middle" class="small">confidence-weighted surface,</text>
-      <text x="485" y="148" text-anchor="middle" class="small">carving, 0.3–0.55 ms CPU</text>
+      <text x="485" y="148" text-anchor="middle" class="small">temporal fade, 0.3–0.55 ms CPU</text>
       <rect class="box" x="610" y="85" width="170" height="80" rx="10"/>
       <text x="695" y="114" text-anchor="middle" font-weight="600" font-size="14">Gaussians</text>
       <text x="695" y="134" text-anchor="middle" class="small">normal-aligned, true size,</text>
@@ -262,19 +262,21 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
         <tr><td>Full-resolution colour from all cameras every frame</td><td>About twice the colour detail, no flicker</td><td><span class="tag good">kept</span></td></tr>
         <tr><td>Best-view colour</td><td>Head-on colour error 10.5 → 7.4</td><td><span class="tag good">kept</span></td></tr>
         <tr><td>Blur width 0.7 + per-splat colour slope</td><td>Sharpness vs camera photo 0.34 → 0.50</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Visibility carving: every camera, every frame, removes Gaussians it looks through or sees background at</td><td>Gaussians left behind by fast motion vanish at once instead of trailing; thin parts seen by few cameras (hair, guitar head) no longer break up as they did with short fade timers. 1,000&ndash;1,500 removed per frame, ~0.1 ms CPU</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Carving's silhouette band wider than the depth filter's edge erosion (5 px, not 1.5 px)</td><td>The first version took the 3-pixel band the edge filter erases as background and removed ~40,000 real Gaussians per frame (matched fell to ~50 %); now under 20 per frame, matched back to ~70 %</td><td><span class="tag good">kept</span></td></tr>
+        <tr><td>Visibility carving: every camera, every frame, removes Gaussians it looks through or sees background at</td><td>Removed trails of fast motion at once (1,000&ndash;1,500 Gaussians per frame on the guitarist), but on the two dancers it removed ~120,000 per frame and left them sparse; simplified out together with Keep Hidden Gaussians, which relied on its visibility test. Gaussians now leave on the fade timer. Not yet re-measured on held-out cameras without it</td><td><span class="tag bad">removed</span></td></tr>
+        
         <tr><td>Per-frame camera self-calibration</td><td>Corrections drifted up to 23 mm; quality dropped</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Gradient optimiser in the loop</td><td>No quality gain; fusion fell to 15–19 fps</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Evidence existence, opaque discs, surface snap, boundary shrink</td><td>Gaussian-count explosions, holes or artefacts</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Isolated-Gaussian removal (too few neighbours within ~1 cm)</td><td>Only 30&ndash;70 removed per frame: the floaters come in small clusters, not alone</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Colour-guided depth smoothing before fusion</td><td>No visible gain; depth error against the cameras rose by ~0.2 mm</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Noise-aware motion (velocity smoothing, mm thresholds)</td><td>Superseded by visibility carving</td><td><span class="tag bad">removed</span></td></tr>
+        <tr><td>Noise-aware motion (velocity smoothing, mm thresholds)</td><td>Superseded by visibility carving, itself removed since</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Offline refinement of the recorded Gaussians: 30 steps per frame against the cameras&rsquo; photos, anchored to their depth sensors</td><td>On a camera left out of fusion and refinement: +1.1 dB on two dancers, +0.2 dB on the guitarist from the front; ~4 s per frame, runs automatically after a recording</td><td><span class="tag good">kept</span></td></tr>
         <tr><td>Refinement against the photos only (no depth anchor)</td><td>+1.6 dB on the dancers but &minus;2.1 dB on the guitarist&rsquo;s front at 100 steps: with no camera facing the face, it bends the front to fit the side views</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Longer refinement (100&ndash;300 steps)</td><td>+1.9 dB where other cameras cover the view well, &minus;0.8 to &minus;2.3 dB where they do not; fits the training views ever better (35 dB) while the unseen view gets worse</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Refinement extras: a colour matrix per camera, gentler learning rates, cloning Gaussians into holes</td><td>No gain (the training cameras already agree in colour; holes need surface the cameras never measured)</td><td><span class="tag bad">removed</span></td></tr>
         <tr><td>Refinement shared over neighbouring frames (same Gaussian by fusion ID)</td><td>+0.1 dB on top of the depth anchor, twice the time</td><td><span class="tag">optional</span></td></tr>
+        <tr><td>Neighbour-voxel matching: a sample that misses its own 4&nbsp;mm voxel is matched to a Gaussian in the 26 around it instead of creating a new one</td><td>Measured by fusion ID, 41&ndash;72&nbsp;% of the Gaussians are rebuilt every frame, mostly within 8&nbsp;mm of one that just died. Matching to neighbours cut births by more than half, but also halved the Gaussians (224k &rarr; 112k) and left stale colour: blotchy faces, speckled detail</td><td><span class="tag bad">removed</span></td></tr>
+        <tr><td>Scene-generic auto setup (capture box, floor and carving edge measured from the first frame)</td><td>Each rig keeps its own capture box and settings in the scene; simpler and predictable</td><td><span class="tag bad">removed</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -296,11 +298,11 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
   <h2>Limitations</h2>
   <ul>
     <li>Not optimised 3DGS in the live view: detail is limited by depth-sensor quality and the 4 mm fusion grid; texture between cameras is misplaced by 1&ndash;2 pixels. Refinement fixes much of that, but only offline so far (~4 s per frame), not at 30 fps.</li>
-    <li>Fast motion: with two people dancing only 10&ndash;13&nbsp;% of each frame&rsquo;s samples match an existing Gaussian (about 70&nbsp;% for the guitarist), so most Gaussians are rebuilt every frame: sparser, softer, and 4DGaussians scores higher on that take.</li>
+    <li>Fast motion: with two people dancing only 10&ndash;13&nbsp;% of each frame&rsquo;s samples match an existing Gaussian (about 70&nbsp;% for the guitarist), so most Gaussians are rebuilt every frame: sparser, softer, and 4DGaussians scores higher on that take. Without visibility carving, a Gaussian left behind by fast motion disappears only when the fade timer runs out.</li>
     <li>Holes: areas no camera sees well have no splats (behind an instrument, between the legs, between two people in contact), and surfaces seen only edge-on leave thin holes along the silhouette. On the dancers, holes are 9&nbsp;% of the pixels and half the error; refinement cannot fill them.</li>
     <li>Camera placement matters: only one camera faces the performer; without it the face breaks up, and refinement helps that view least (+0.2 dB).</li>
     <li>Colour response differs between cameras: a per-image colour fit recovers 1&ndash;3 dB on a held-out camera. Only calibrating every camera against a colour chart fixes that; refinement cannot.</li>
-    <li>Several thresholds are tuned per rig (10 cameras at ~1.3 m vs 8 cameras with two dancers needed different carving, edge-birth and hidden-Gaussian settings), and refinement&rsquo;s best number of steps depends on how well the cameras cover each view.</li>
+    <li>Several thresholds are tuned per rig (10 cameras at ~1.3 m vs 8 cameras with two dancers needed different edge-birth and fade settings), and refinement&rsquo;s best number of steps depends on how well the cameras cover each view.</li>
     <li>Evaluation so far: four held-out takes on two rigs, scored inside SAM 2 masks at 640&times;360, against one offline baseline (4DGaussians); short takes (0.5&ndash;2 s).</li>
   </ul>
 </section>
