@@ -254,10 +254,12 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
 <section>
   <h2>Limitations</h2>
   <ul>
-    <li>Not optimised 3DGS: detail is limited by depth-sensor quality and fusion resolution; hair, hands, dark or shiny clothes and fast motion are the hardest cases.</li>
-    <li>Areas no camera sees (behind a held instrument, between the legs) have no splats.</li>
-    <li>Several thresholds are tuned for this rig and need re-tuning for other rigs or sensors.</li>
-    <li>No held-out-camera evaluation (PSNR / SSIM / LPIPS) against offline methods yet.</li>
+    <li>Not optimised 3DGS: detail is limited by depth-sensor quality and the 4 mm fusion grid. Hair, hands and dark or shiny clothes are the hardest cases. From a camera it never saw, the performer scores about 21.5 dB, well below what an optimised model reaches on its own training views (~31 dB).</li>
+    <li>Fast motion: a Gaussian is confirmed over several frames. With a slow guitarist about 70&nbsp;% of each frame's samples match an existing Gaussian; with two people dancing only 10&ndash;13&nbsp;% do, so the render is sparser and softer, and visibility carving has to remove the trails left behind.</li>
+    <li>Areas no camera sees well have no splats: behind a held instrument, between the legs, between two people in contact. Surfaces the cameras see only edge-on leave thin holes along the silhouette (2&ndash;4&nbsp;% of the performer from a held-out view).</li>
+    <li>Camera placement matters: only one camera sees the face head-on, and without it the face breaks up (held-out camera 0).</li>
+    <li>Several thresholds are tuned for this rig (10 cameras, subject at ~1.3 m). An 8-camera rig with two dancers needs carving, edge-birth and hidden-Gaussian settings re-tuned.</li>
+    <li>Evaluation so far: three held-out cameras on single-performer takes, scored inside SAM 2 masks at 640&times;360, against one offline baseline (4DGaussians).</li>
   </ul>
 </section>
 
