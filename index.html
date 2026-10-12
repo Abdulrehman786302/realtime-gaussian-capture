@@ -179,6 +179,27 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
   </div>
 </section>
 
+<section id="heldout">
+  <h2>Held-out camera evaluation</h2>
+  <p class="muted">One of the ten cameras (camera 3) is left out of the fusion entirely: no depth, no colour, no carving. The Gaussians built from the other nine are rendered from camera 3's pose and compared with its real photo, the standard novel-view test. For reference, 4DGaussians, an offline method, is trained on exactly the same nine cameras and frames and rendered from the same pose.</p>
+  <figure>
+    <div class="media" style="aspect-ratio: 656 / 524;">
+      <video src="assets/heldout/heldout_cam03.mp4" poster="assets/heldout/heldout_cam03_poster.jpg" autoplay muted loop playsinline controls></video>
+    </div>
+    <figcaption>Camera 3's photo (left) against both methods rendered from its pose, 12 Oct take, 60 frames at 30 fps. Neither method saw this camera.</figcaption>
+  </figure>
+  <div class="card tbl" style="margin-top:18px">
+    <table>
+      <thead><tr><th>Method</th><th class="num">PSNR&nbsp;↑</th><th class="num">SSIM&nbsp;↑</th><th class="num">LPIPS&nbsp;↓</th><th class="num">PSNR in mask</th><th class="num">Time</th></tr></thead>
+      <tbody>
+        <tr><td><b>Real-time (ours)</b></td><td class="num"><b>21.70</b></td><td class="num"><b>0.803</b></td><td class="num"><b>0.125</b></td><td class="num"><b>16.56</b></td><td class="num">~22 ms per frame, live</td></tr>
+        <tr><td>4DGaussians (offline, 14,000 iterations)</td><td class="num">14.44</td><td class="num">0.739</td><td class="num">0.194</td><td class="num">9.30</td><td class="num">34 min training for 61 frames</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="font-size:14px;margin-top:10px">Scored on the performer only (with the guitar), at 640×360, LPIPS VGG. The performer is outlined in camera 3's photos by SAM 2, which sees only the photos, not either method's output. Both images are masked to that outline and cropped to it. 4DGaussians fits its nine training views almost exactly (30.9 dB) but breaks up between them; the real-time fusion loses its points mainly to holes and silhouette edges, not colour. One held-out camera and one take so far.</p>
+</section>
+
 <section>
   <h2>What made the difference</h2>
   <p class="muted">Each change was measured live against the camera photos; changes that did not help were removed.</p>
