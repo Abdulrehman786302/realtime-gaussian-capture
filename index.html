@@ -212,6 +212,27 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
   <p class="muted" style="font-size:14px;margin-top:10px">Scored on the performer only (with the guitar), at 640×360, LPIPS VGG. The performer is outlined in the left-out camera's photos by SAM 2, which sees only the photos, not either method's output; both images are masked to that outline and cropped to it. Real-time: ~22 ms per fused frame, live. 4DGaussians: 23&ndash;34 min of training per take of ~2 s, 14,000 iterations. 4DGaussians fits its nine training views almost exactly (~31 dB) but breaks up between them, most where few training cameras see the surface (the front, without camera 0). The real-time fusion loses its points to thin holes along silhouettes and to softness and 1&ndash;2 px misregistration of fine texture; without the front camera, its face also degrades.</p>
 </section>
 
+<section id="heldout-dancers">
+  <h2>Second take: two dancers, eight cameras</h2>
+  <p class="muted">A different rig and a harder subject: eight Azure Kinect cameras (no overhead camera), two people dancing in contact, subject ~1.4 m away. Same test: camera 0 (front) left out of the fusion and of 4DGaussians' training, both scored against its photos inside SAM 2 outlines of both dancers. The cameras agree well (92&ndash;100&nbsp;% of each camera's depth points land on the others' silhouettes); the difficulty is the motion.</p>
+  <figure>
+    <div class="media" style="aspect-ratio: 822 / 404;">
+      <video src="assets/heldout_dancers/heldout_cam00.mp4" poster="assets/heldout_dancers/heldout_cam00_poster.jpg" autoplay muted loop playsinline controls></video>
+    </div>
+    <figcaption>Camera 0's photo (left) against both methods rendered from its pose, about 2 s at 30 fps. Neither method saw this camera.</figcaption>
+  </figure>
+  <div class="card tbl" style="margin-top:18px">
+    <table>
+      <thead><tr><th>Method</th><th class="num">PSNR&nbsp;↑</th><th class="num">SSIM&nbsp;↑</th><th class="num">LPIPS&nbsp;↓</th><th class="num">Time</th></tr></thead>
+      <tbody>
+        <tr><td>Real-time (ours)</td><td class="num">22.67</td><td class="num">0.799</td><td class="num">0.201</td><td class="num">~38 ms per fused frame, live</td></tr>
+        <tr><td>4DGaussians (offline, 14,000 iterations)</td><td class="num"><b>23.73</b></td><td class="num"><b>0.805</b></td><td class="num"><b>0.196</b></td><td class="num">23 min training for 63 frames</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="font-size:14px;margin-top:10px">Here the offline method is ahead. The dancers move several centimetres per frame, so only 10&ndash;13&nbsp;% of each frame's samples match an existing Gaussian (about 70&nbsp;% for the guitarist): most Gaussians are rebuilt from a single frame, and the surfaces the two dancers hide from each other stay open. 4DGaussians, optimised over the whole clip, fills them but blurs and doubles the faces. Holes are 9&nbsp;% of the dancers' pixels and half of the real-time error. Performer-only scores at 640×360, LPIPS VGG.</p>
+</section>
+
 <section>
   <h2>What made the difference</h2>
   <p class="muted">Each change was measured live against the camera photos; changes that did not help were removed.</p>
