@@ -181,23 +181,35 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
 
 <section id="heldout">
   <h2>Held-out camera evaluation</h2>
-  <p class="muted">One of the ten cameras (camera 3) is left out of the fusion entirely: no depth, no colour, no carving. The Gaussians built from the other nine are rendered from camera 3's pose and compared with its real photo, the standard novel-view test. For reference, 4DGaussians, an offline method, is trained on exactly the same nine cameras and frames and rendered from the same pose.</p>
+  <p class="muted">One of the ten cameras is left out of the fusion entirely: no depth, no colour, no carving. The Gaussians built from the other nine are rendered from the left-out camera's pose and compared with its real photo, the standard novel-view test. For reference, 4DGaussians, an offline method, is trained on exactly the same nine cameras and frames and rendered from the same pose. Repeated with three different cameras left out, each on its own take.</p>
+  <div class="v3d-bar" style="margin:0 0 10px">
+    <span class="muted">Left-out camera:</span>
+    <button type="button" class="v3d-btn ho-cam" data-cam="cam00">Camera 0 (front)</button>
+    <button type="button" class="v3d-btn ho-cam" data-cam="cam03">Camera 3 (side)</button>
+    <button type="button" class="v3d-btn ho-cam" data-cam="cam06">Camera 6 (back side)</button>
+  </div>
   <figure>
-    <div class="media" style="aspect-ratio: 656 / 524;">
-      <video src="assets/heldout/heldout_cam03.mp4" poster="assets/heldout/heldout_cam03_poster.jpg" autoplay muted loop playsinline controls></video>
+    <div class="media" id="ho-media" style="aspect-ratio: 938 / 558;">
+      <video id="ho-video" src="assets/heldout/heldout_cam00.mp4" poster="assets/heldout/heldout_cam00_poster.jpg" autoplay muted loop playsinline controls></video>
     </div>
-    <figcaption>Camera 3's photo (left) against both methods rendered from its pose, 12 Oct take, 60 frames at 30 fps. Neither method saw this camera.</figcaption>
+    <figcaption>The left-out camera's photo (left) against both methods rendered from its pose, about 2 s at 30 fps. Neither method saw this camera.</figcaption>
   </figure>
   <div class="card tbl" style="margin-top:18px">
     <table>
-      <thead><tr><th>Method</th><th class="num">PSNR&nbsp;↑</th><th class="num">SSIM&nbsp;↑</th><th class="num">LPIPS&nbsp;↓</th><th class="num">PSNR in mask</th><th class="num">Time</th></tr></thead>
+      <thead><tr><th>Left-out camera</th><th>Method</th><th class="num">PSNR&nbsp;↑</th><th class="num">SSIM&nbsp;↑</th><th class="num">LPIPS&nbsp;↓</th></tr></thead>
       <tbody>
-        <tr><td><b>Real-time (ours)</b></td><td class="num"><b>21.70</b></td><td class="num"><b>0.803</b></td><td class="num"><b>0.125</b></td><td class="num"><b>16.56</b></td><td class="num">~22 ms per frame, live</td></tr>
-        <tr><td>4DGaussians (offline, 14,000 iterations)</td><td class="num">14.44</td><td class="num">0.739</td><td class="num">0.194</td><td class="num">9.30</td><td class="num">34 min training for 61 frames</td></tr>
+        <tr><td rowspan="2">Camera 0 (front)</td><td><b>Real-time (ours)</b></td><td class="num"><b>22.06</b></td><td class="num"><b>0.838</b></td><td class="num"><b>0.123</b></td></tr>
+        <tr><td>4DGaussians</td><td class="num">16.21</td><td class="num">0.808</td><td class="num">0.153</td></tr>
+        <tr><td rowspan="2">Camera 3 (side)</td><td><b>Real-time (ours)</b></td><td class="num"><b>21.70</b></td><td class="num"><b>0.803</b></td><td class="num"><b>0.125</b></td></tr>
+        <tr><td>4DGaussians</td><td class="num">14.44</td><td class="num">0.739</td><td class="num">0.194</td></tr>
+        <tr><td rowspan="2">Camera 6 (back side)</td><td><b>Real-time (ours)</b></td><td class="num"><b>20.86</b></td><td class="num">0.794</td><td class="num"><b>0.131</b></td></tr>
+        <tr><td>4DGaussians</td><td class="num">20.37</td><td class="num"><b>0.807</b></td><td class="num">0.141</td></tr>
+        <tr><td rowspan="2"><b>Average</b></td><td><b>Real-time (ours)</b></td><td class="num"><b>21.54</b></td><td class="num"><b>0.812</b></td><td class="num"><b>0.126</b></td></tr>
+        <tr><td>4DGaussians</td><td class="num">17.01</td><td class="num">0.785</td><td class="num">0.162</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="muted" style="font-size:14px;margin-top:10px">Scored on the performer only (with the guitar), at 640×360, LPIPS VGG. The performer is outlined in camera 3's photos by SAM 2, which sees only the photos, not either method's output. Both images are masked to that outline and cropped to it. 4DGaussians fits its nine training views almost exactly (30.9 dB) but breaks up between them; the real-time fusion loses its points mainly to holes and silhouette edges, not colour. One held-out camera and one take so far.</p>
+  <p class="muted" style="font-size:14px;margin-top:10px">Scored on the performer only (with the guitar), at 640×360, LPIPS VGG. The performer is outlined in the left-out camera's photos by SAM 2, which sees only the photos, not either method's output; both images are masked to that outline and cropped to it. Real-time: ~22 ms per fused frame, live. 4DGaussians: 23&ndash;34 min of training per take of ~2 s, 14,000 iterations. 4DGaussians fits its nine training views almost exactly (~31 dB) but breaks up between them, most where few training cameras see the surface (the front, without camera 0). The real-time fusion loses its points to thin holes along silhouettes and to softness and 1&ndash;2 px misregistration of fine texture; without the front camera, its face also degrades.</p>
 </section>
 
 <section>
@@ -376,6 +388,23 @@ new IntersectionObserver((entries, obs) => {
     root.setAttribute('data-theme', next);
     try { localStorage.setItem('theme', next); } catch (e) {}
   });
+})();
+</script>
+<script>
+// held-out camera switcher
+(function () {
+  var v = document.getElementById('ho-video'), box = document.getElementById('ho-media');
+  var ratio = { cam00: '938 / 558', cam03: '656 / 524', cam06: '620 / 508' };
+  var btns = document.querySelectorAll('.ho-cam');
+  function pick(cam) {
+    btns.forEach(function (b) { b.disabled = b.getAttribute('data-cam') === cam; });
+    box.style.aspectRatio = ratio[cam];
+    v.poster = 'assets/heldout/heldout_' + cam + '_poster.jpg';
+    v.src = 'assets/heldout/heldout_' + cam + '.mp4';
+    v.play().catch(function () {});
+  }
+  btns.forEach(function (b) { b.addEventListener('click', function () { pick(b.getAttribute('data-cam')); }); });
+  btns[0].disabled = true;
 })();
 </script>
 </body>
