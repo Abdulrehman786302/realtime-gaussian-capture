@@ -249,41 +249,6 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
 </section>
 
 <section>
-  <h2>What made the difference</h2>
-  <p class="muted">Each change was measured live against the camera photos; changes that did not help were removed.</p>
-  <div class="card tbl">
-    <table>
-      <thead><tr><th>Change</th><th>Effect</th><th></th></tr></thead>
-      <tbody>
-        <tr><td>True-size splats (removed an 8-pixel minimum)</td><td>Every splat had been drawn ~6× too big; largest sharpness gain</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Single gamma encoding</td><td>Removed the washed-out look from double gamma</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Splats aligned to the surface normal</td><td>Fixed vertical streaks (median orientation error was 48°)</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Scale cap + edge-only birth rule</td><td>No floating blobs in motion, no fringe outside silhouettes</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Full-resolution colour from all cameras every frame</td><td>About twice the colour detail, no flicker</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Best-view colour</td><td>Head-on colour error 10.5 → 7.4</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Blur width 0.7 + per-splat colour slope</td><td>Sharpness vs camera photo 0.34 → 0.50</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Visibility carving: every camera, every frame, removes Gaussians it looks through or sees background at</td><td>Removed trails of fast motion at once (1,000&ndash;1,500 Gaussians per frame on the guitarist), but on the two dancers it removed ~120,000 per frame and left them sparse; simplified out together with Keep Hidden Gaussians, which relied on its visibility test. Gaussians now leave on the fade timer. Not yet re-measured on held-out cameras without it</td><td><span class="tag bad">removed</span></td></tr>
-        
-        <tr><td>Per-frame camera self-calibration</td><td>Corrections drifted up to 23 mm; quality dropped</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Gradient optimiser in the loop</td><td>No quality gain; fusion fell to 15–19 fps</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Evidence existence, opaque discs, surface snap, boundary shrink</td><td>Gaussian-count explosions, holes or artefacts</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Isolated-Gaussian removal (too few neighbours within ~1 cm)</td><td>Only 30&ndash;70 removed per frame: the floaters come in small clusters, not alone</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Colour-guided depth smoothing before fusion</td><td>No visible gain; depth error against the cameras rose by ~0.2 mm</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Noise-aware motion (velocity smoothing, mm thresholds)</td><td>Superseded by visibility carving, itself removed since</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Edge-birth rule relaxed: a new Gaussian needs a sample 3+ px inside a silhouette instead of 5+ px (Edge Birth Min Weight 0.5 &rarr; 0.33)</td><td>On a held-out camera, the same 135 frames of the two dancers: +0.5&nbsp;dB, SSIM 0.820 &rarr; 0.828, holes 4.3 &rarr; 3.5&nbsp;% of the dancers&rsquo; pixels. Going further (0.22) gained nothing more</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Offline refinement of the recorded Gaussians: 30 steps per frame against the cameras&rsquo; photos, anchored to their depth sensors</td><td>On a camera left out of fusion and refinement: +1.1 dB on two dancers, +0.2 dB on the guitarist from the front; ~4 s per frame, runs automatically after a recording</td><td><span class="tag good">kept</span></td></tr>
-        <tr><td>Refinement against the photos only (no depth anchor)</td><td>+1.6 dB on the dancers but &minus;2.1 dB on the guitarist&rsquo;s front at 100 steps: with no camera facing the face, it bends the front to fit the side views</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Longer refinement (100&ndash;300 steps)</td><td>+1.9 dB where other cameras cover the view well, &minus;0.8 to &minus;2.3 dB where they do not; fits the training views ever better (35 dB) while the unseen view gets worse</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Refinement extras: a colour matrix per camera, gentler learning rates, cloning Gaussians into holes</td><td>No gain (the training cameras already agree in colour; holes need surface the cameras never measured)</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Refinement shared over neighbouring frames (same Gaussian by fusion ID)</td><td>+0.1 dB on top of the depth anchor, twice the time</td><td><span class="tag">optional</span></td></tr>
-        <tr><td>Neighbour-voxel matching: a sample that misses its own 4&nbsp;mm voxel is matched to a Gaussian in the 26 around it instead of creating a new one</td><td>Measured by fusion ID, 41&ndash;72&nbsp;% of the Gaussians are rebuilt every frame, mostly within 8&nbsp;mm of one that just died. Matching to neighbours cut births by more than half, but also halved the Gaussians (224k &rarr; 112k) and left stale colour: blotchy faces, speckled detail</td><td><span class="tag bad">removed</span></td></tr>
-        <tr><td>Scene-generic auto setup (capture box, floor and carving edge measured from the first frame)</td><td>Each rig keeps its own capture box and settings in the scene; simpler and predictable</td><td><span class="tag bad">removed</span></td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<section>
   <h2>Recording and playback</h2>
   <ul>
     <li>One <code>.gseq</code> file per take: a small header and index, then one standard <a href="https://github.com/nianticlabs/spz">SPZ</a> frame per capture frame. The latest take: 62 frames, 102 MB, ~140,000 Gaussians and 1.7 MB per frame.</li>
@@ -298,13 +263,14 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
 <section>
   <h2>Limitations</h2>
   <ul>
-    <li>Not optimised 3DGS in the live view: detail is limited by depth-sensor quality and the 4 mm fusion grid; texture between cameras is misplaced by 1&ndash;2 pixels. Refinement fixes much of that, but only offline so far (~4 s per frame), not at 30 fps.</li>
-    <li>Fast motion: with two people dancing only 10&ndash;13&nbsp;% of each frame&rsquo;s samples match an existing Gaussian (about 70&nbsp;% for the guitarist), so most Gaussians are rebuilt every frame: sparser, softer, and 4DGaussians scores higher on that take. Without visibility carving, a Gaussian left behind by fast motion disappears only when the fade timer runs out.</li>
-    <li>Holes: areas no camera sees well have no splats (behind an instrument, between the legs, between two people in contact), and surfaces seen only edge-on leave thin holes along the silhouette. Relaxing the edge-birth rule cut the dancers&rsquo; holes from 4.3 to 3.5&nbsp;% of their pixels; what remains (2.7&nbsp;% on the guitarist) needs surface no camera measured, which refinement cannot add.</li>
-    <li>Camera placement matters: only one camera faces the performer; without it the face breaks up, and refinement helps that view least (+0.2 dB).</li>
-    <li>Colour response differs between cameras: a per-image colour fit recovers 1&ndash;3 dB on a held-out camera. Only calibrating every camera against a colour chart fixes that; refinement cannot.</li>
-    <li>Several thresholds are tuned per rig (10 cameras at ~1.3 m vs 8 cameras with two dancers needed different edge-birth and fade settings), and refinement&rsquo;s best number of steps depends on how well the cameras cover each view.</li>
-    <li>Evaluation so far: four held-out takes on two rigs, scored inside SAM 2 masks at 640&times;360, against one offline baseline (4DGaussians); short takes (0.5&ndash;2 s).</li>
+    <li><b>Live view is not optimised 3DGS.</b> Detail is limited by depth-sensor quality and the 4&nbsp;mm fusion grid, and texture seen by different cameras is misplaced by 1&ndash;2 pixels.</li>
+    <li><b>Refinement improves the recording, not the live view.</b> Run after a recording (~4&nbsp;s per frame), a depth-anchored refinement of the recorded Gaussians adds +0.2 to +1.1&nbsp;dB on cameras left out of fusion and refinement. Spreading the same steps over the live loop (1&ndash;9 camera views per frame) gave no measurable gain, most likely because Gaussians are rebuilt too often to collect enough steps (only 27&nbsp;% survive a frame on the dancers), and because little GPU time is left (fusion already takes ~38&nbsp;ms per frame on the 8-camera rig).</li>
+    <li><b>Fast motion.</b> With two people dancing, about three quarters of the Gaussians are rebuilt every frame (41&nbsp;% for the guitarist), so the dancers look sparser and softer, and 4DGaussians, optimised over the whole clip, scores higher on that take (23.7 vs 22.7&nbsp;dB). A Gaussian left behind by fast motion disappears only when its fade timer runs out.</li>
+    <li><b>Holes.</b> Surfaces no camera sees well have no splats (behind an instrument, between the legs, between two people in contact), and surfaces seen only edge-on leave thin holes along the silhouette. A relaxed edge-birth rule cut the dancers&rsquo; holes from 4.3 to 3.5&nbsp;% of their pixels (+0.5&nbsp;dB); what remains (2.7&nbsp;% on the guitarist) is surface no camera measured, which refinement cannot add.</li>
+    <li><b>One camera faces the performer.</b> Without it the face breaks up, and refinement helps that view least (+0.2&nbsp;dB).</li>
+    <li><b>Cameras differ in colour response.</b> A per-image colour fit recovers 1&ndash;3&nbsp;dB on a held-out camera; only calibrating every camera against a colour chart fixes that, not refinement.</li>
+    <li><b>Settings are per rig.</b> The 10-camera and 8-camera rigs need their own capture box and edge-birth and fade settings, and refinement&rsquo;s best number of steps depends on how well the cameras cover each view (30 is safe on every take measured).</li>
+    <li><b>Evaluation so far.</b> Held-out takes on two rigs (one or two performers, up to 6&nbsp;s), scored inside SAM&nbsp;2 outlines at 640&times;360 against one offline baseline (4DGaussians).</li>
   </ul>
 </section>
 
