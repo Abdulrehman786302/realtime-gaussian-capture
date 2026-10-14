@@ -144,6 +144,18 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
   <figcaption id="gs-caption"></figcaption>
 </section>
 
+<section id="novelty">
+  <h2>What is new</h2>
+  <p>Gaussian splatting normally needs an optimisation per scene or per frame: minutes to hours offline, or seconds per frame for streaming methods. This work builds a performer's Gaussians <em>live</em>, at 30 fps, directly from a multi-camera depth rig, with no training step, and records them as standard splats. Specifically:</p>
+  <ul>
+    <li><b>Gaussians from fusion, not optimisation.</b> Depth from 8&ndash;10 sensors is fused on the GPU into a confidence-weighted surface each frame. Every surface element becomes a Gaussian with its true size, lying flat along the measured surface, in ~15&ndash;22&nbsp;ms per frame.</li>
+    <li><b>Colour sharper than the depth grid.</b> Each Gaussian takes its colour from the full-resolution colour images of the cameras facing it, plus a colour slope across the splat. That keeps edges inside a 4&nbsp;mm splat (eyes, lips, knit) that one flat colour per splat averages away.</li>
+    <li><b>Recorded as a standard splat sequence.</b> Each take is written frame by frame as SPZ (1.7&nbsp;MB per frame) and plays back in Unity and in the browser next to optimised 3DGS scenes.</li>
+    <li><b>Scored like 3DGS.</b> On a camera left out of the fusion, the live result beats the offline 4DGaussians on a single performer (21.5 vs 17.0&nbsp;dB) and trails it on two fast dancers (22.7 vs 23.7&nbsp;dB), with the same cameras, frames and scoring for both.</li>
+  </ul>
+  <p class="muted">Next step (<a href="#wip">work in progress</a>): keep Gaussians alive across frames, so that a small optimisation step can run live on top of the fusion.</p>
+</section>
+
 <section>
   <h2>Abstract</h2>
   <p>Most Gaussian-splatting pipelines optimise each scene or each frame offline, which takes minutes to hours. We instead build Gaussians <em>directly</em> from a calibrated multi-camera RGB-D rig, frame by frame, in real time. Depth from ten sensors is fused into a persistent, confidence-weighted surface model. Each surface element becomes a Gaussian aligned to the local surface normal, with its true projected size and colour gathered from the full-resolution colour images of all cameras, including a per-splat colour slope. The live result renders in Unity at 30 fps and records to a compact sequence of standard SPZ frames that plays back next to optimised 3DGS environments.</p>
