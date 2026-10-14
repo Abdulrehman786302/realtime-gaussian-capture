@@ -260,13 +260,41 @@ footer { padding: 40px 0 60px; color: var(--ink-faint); font-size: 13px; text-al
   </ul>
 </section>
 
+<section id="wip">
+  <h2>Work in progress: holes and persistence</h2>
+  <p class="muted">Two problems remain in the live fusion: surface no camera measured leaves holes, and Gaussians are rebuilt so often that a live optimisation step has nothing to build on. Both are being worked on; the numbers below are live measurements from the fusion's own logs, not yet held-out scores.</p>
+  <h3>Hole filling (four switches, each optional)</h3>
+  <ul>
+    <li><b>Screen-space fill.</b> Gaps of up to 6&nbsp;px with splats around them take the surrounding colour when drawn (~2,500 px a frame). Cosmetic: nothing is added in 3D or to recordings.</li>
+    <li><b>Silhouette fill.</b> Where a camera has no depth (hair, dark clothing) but its depth surrounds the spot on one surface, a Gaussian is placed there and coloured from the photos of the cameras facing it (~3,000 a frame). Any camera that sees through it removes it.</li>
+    <li><b>Hidden-part memory.</b> A Gaussian no camera can currently see is kept for up to 1.5&nbsp;s instead of fading, until a camera sees it again or sees the space empty.</li>
+    <li><b>Geometric body prior.</b> Holes are closed from their rim: small ones grow one voxel a frame along the surface; big ones are spanned by curved bridges from rim to rim and relaxed into a smooth membrane. A piece is kept only inside a hole (measured surface around it on at least three of four axes) and only where no camera sees through it, sees background, or sees a surface cleanly. Its colour is blended from the rim. No learned body model is used.</li>
+  </ul>
+  <p class="muted">What did not work, and was changed: growing every edge filled the whole body with a second, blurred layer (Gaussian count doubled); taking colour from the photos for guessed surface picked up the wall behind (white patches); flat extensions of curved surfaces left fins past the edges. Each is now prevented by the rules above.</p>
+  <h3>Persistence: how long a Gaussian lives</h3>
+  <div class="card tbl">
+    <table>
+      <thead><tr><th>Two dancers, live, all fills off</th><th class="num">Before</th><th class="num">After two matching fixes</th></tr></thead>
+      <tbody>
+        <tr><td>New Gaussians per frame (share of samples)</td><td class="num">22&ndash;58&nbsp;%</td><td class="num">16&ndash;41&nbsp;%</td></tr>
+        <tr><td>Removed per frame</td><td class="num">40,000&ndash;87,000</td><td class="num">27,000&ndash;65,000</td></tr>
+        <tr><td>Older than 8 frames (~0.25&nbsp;s)</td><td class="num">1&ndash;17&nbsp;%</td><td class="num">4&ndash;27&nbsp;%</td></tr>
+        <tr><td>Older than 32 frames (~1&nbsp;s)</td><td class="num">0&ndash;1&nbsp;%</td><td class="num">0&ndash;2&nbsp;%</td></tr>
+        <tr><td>Median age</td><td class="num">1&ndash;3 frames</td><td class="num">2&ndash;7 frames</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" style="font-size:14px;margin-top:10px">The two fixes: every match now counts towards a Gaussian being established (still surface was treated as new and cut two frames after its first miss), and an observation that lands in a neighbouring voxel takes over that voxel's Gaussian instead of creating a new one (depth noise moves still surface across voxel boundaries). Ranges are over ten-frame windows of one take; fusion time is unchanged (~15&nbsp;ms). What remains is real motion: the dancers move 3&ndash;10&nbsp;cm between frames, while a Gaussian can only be matched within ~9&nbsp;mm. A first motion-prediction attempt, matching along each camera's ray, failed at this speed (the fitted motion was wrong and cost 8&nbsp;ms); next are constant-velocity prediction and scene flow from per-camera optical flow lifted to 3D with the cameras' depth. A live optimisation step is planned once most Gaussians live for a second or more.</p>
+</section>
+
 <section>
   <h2>Limitations</h2>
   <ul>
     <li><b>Live view is not optimised 3DGS.</b> Detail is limited by depth-sensor quality and the 4&nbsp;mm fusion grid, and texture seen by different cameras is misplaced by 1&ndash;2 pixels.</li>
     <li><b>Refinement improves the recording, not the live view.</b> Run after a recording (~4&nbsp;s per frame), a depth-anchored refinement of the recorded Gaussians adds +0.2 to +1.1&nbsp;dB on cameras left out of fusion and refinement. Spreading the same steps over the live loop (1&ndash;9 camera views per frame) gave no measurable gain, most likely because Gaussians are rebuilt too often to collect enough steps (only 27&nbsp;% survive a frame on the dancers), and because little GPU time is left (fusion already takes ~38&nbsp;ms per frame on the 8-camera rig).</li>
     <li><b>Fast motion.</b> With two people dancing, about three quarters of the Gaussians are rebuilt every frame (41&nbsp;% for the guitarist), so the dancers look sparser and softer, and 4DGaussians, optimised over the whole clip, scores higher on that take (23.7 vs 22.7&nbsp;dB). A Gaussian left behind by fast motion disappears only when its fade timer runs out.</li>
-    <li><b>Holes.</b> Surfaces no camera sees well have no splats (behind an instrument, between the legs, between two people in contact), and surfaces seen only edge-on leave thin holes along the silhouette. A relaxed edge-birth rule cut the dancers&rsquo; holes from 4.3 to 3.5&nbsp;% of their pixels (+0.5&nbsp;dB); what remains (2.7&nbsp;% on the guitarist) is surface no camera measured, which refinement cannot add.</li>
+    <li><b>Holes.</b> Surfaces no camera sees well have no splats (behind an instrument, between the legs, between two people in contact), and surfaces seen only edge-on leave thin holes along the silhouette. A relaxed edge-birth rule cut the dancers&rsquo; holes from 4.3 to 3.5&nbsp;% of their pixels (+0.5&nbsp;dB); what remains (2.7&nbsp;% on the guitarist) is surface no camera measured, which refinement cannot add. The hole fills under <a href="#wip">work in progress</a> are not yet scored on a held-out camera, and guessed surface is a plausible continuation, not measured detail.</li>
+    <li><b>Short-lived Gaussians.</b> On the dancers almost no Gaussian lives a second (median age 2&ndash;7 frames), which is why a live optimisation step cannot accumulate yet.</li>
     <li><b>One camera faces the performer.</b> Without it the face breaks up, and refinement helps that view least (+0.2&nbsp;dB).</li>
     <li><b>Cameras differ in colour response.</b> A per-image colour fit recovers 1&ndash;3&nbsp;dB on a held-out camera; only calibrating every camera against a colour chart fixes that, not refinement.</li>
     <li><b>Settings are per rig.</b> The 10-camera and 8-camera rigs need their own capture box and edge-birth and fade settings, and refinement&rsquo;s best number of steps depends on how well the cameras cover each view (30 is safe on every take measured).</li>
